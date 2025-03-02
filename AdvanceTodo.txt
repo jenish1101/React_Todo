@@ -1,352 +1,222 @@
-// Advance Todo (With Complete,Pending and current todo)
+// With Search 
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import './css/AdvanceTodo.css';
 
-function AdvanceTodo() {
-  const [todos, setTodos] = useState([])
-  const [newTodo, setNewTodo] = useState('')
-  const [editingTodoId, setEditingTodoId] = useState(null)
-  const [editingTodoText, setEditingTodoText] = useState('')
+function App() {
+  const [todos, setTodos] = useState(() => {
+    // Load todos from localStorage on first render
+    const savedTodos = localStorage.getItem("todos");
+    return savedTodos ? JSON.parse(savedTodos) : [];
+  });
 
-  const addTodo = () => {
-    if (newTodo.trim()) {
-      const newTodoItem = {
-        id: Date.now(),
-        text: newTodo,
-        status: 'Pending',
-      }
-      setTodos([...todos, newTodoItem])
-      setNewTodo('')
+  const [inputText, setInputText] = useState('');
+  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed'
+  const [searchText, setSearchText] = useState('');
+
+  // Save todos to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("todos", JSON.stringify(todos));
+  }, [todos]);
+
+  // Add new todo
+  const addTodo = (e) => {
+    e.preventDefault();
+    if (inputText.trim()) {
+      setTodos([...todos, { id: Date.now(), text: inputText, completed: false }]);
+      setInputText('');
     }
-  }
+  };
 
-  const editTodo = (id) => {
-    const todoToEdit = todos.find(todo => todo.id === id)
-    if (todoToEdit) {
-      setEditingTodoId(id)
-      setEditingTodoText(todoToEdit.text)
-    }
-  }
+  // Toggle completion status of todo
+  const toggleTodo = (id) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
 
-  const saveTodo = () => {
-    if (editingTodoId !== null && editingTodoText.trim()) {
-      setTodos(todos.map(todo => 
-        todo.id === editingTodoId ? { ...todo, text: editingTodoText } : todo
-      ))
-      setEditingTodoId(null)
-      setEditingTodoText('')
-    }
-  }
-
+  // Delete todo
   const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id))
-  }
+    setTodos(todos.filter(todo => todo.id !== id));
+  };
 
-  const changeStatus = (id, newStatus) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, status: newStatus } : todo
-    ))
-  }
+  // Update todo text
+  const updateTodo = (id) => {
+    const newText = prompt('Edit todo:', todos.find(todo => todo.id === id).text);
+    if (newText !== null && newText.trim() !== '') {
+      setTodos(todos.map(todo =>
+        todo.id === id ? { ...todo, text: newText } : todo
+      ));
+    }
+  };
 
-  const pendingTodos = todos.filter(todo => todo.status === 'Pending')
-  const currentTodos = todos.filter(todo => todo.status === 'Current')
-  const completeTodos = todos.filter(todo => todo.status === 'Complete')
+  // Filter todos based on status and search text
+  const filteredTodos = todos.filter(todo => {
+    const matchesFilter = 
+      (filter === 'pending' && !todo.completed) ||
+      (filter === 'completed' && todo.completed) ||
+      filter === 'all';
+    const matchesSearch = todo.text.toLowerCase().includes(searchText.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center p-4">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-2xl font-bold mb-4">Todo App</h1>
+    <div className="app">
+      <h1>Todo App</h1>
 
-{/* For Add New Todo     */}
-        <div className="mb-4">
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            className="w-full p-2 border rounded mr-2"
-            placeholder="Add a new todo"
-          />
-          <button onClick={addTodo} className="p-2 bg-blue-500 text-white rounded">
-            Add
-          </button>
-        </div>
+      {/* Todo Input Section */}
+      <form onSubmit={addTodo} className="todo-form">
+        <input
+          type="text"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Add a new todo..."
+        />
+        <button type="submit">Add Todo</button>
+      </form>
 
-{/* For Show Todos          */}
-        <div className="space-y-4" style={{border:"2px solid black"}}>
+      {/* Search Bar */}
+      <input
+        type="text"
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        placeholder="Search todos..."
+        className="search-bar"
+      />
 
-{/* Pending  */}
-          <div>
-            <h2 className="text-lg font-bold mb-2">Pending Todos</h2>
-            <div className="space-y-2">
-              {pendingTodos.map(todo => (
-                <div key={todo.id} className="flex items-center justify-between p-2 border rounded bg-gray-50">
-                  {editingTodoId === todo.id ? (
-                    <div className="flex space-x-2 flex-1">
-                      <input
-                        type="text"
-                        value={editingTodoText}
-                        onChange={(e) => setEditingTodoText(e.target.value)}
-                        className="flex-1 p-2 border rounded"
-                      />
-                      <button onClick={saveTodo} className="p-2 bg-green-500 text-white rounded">
-                        Save
-                      </button>
-                      <button onClick={() => setEditingTodoId(null)} className="p-2 bg-red-500 text-white rounded">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex space-x-2 flex-1">
-                      <span>{todo.text}</span>
-                      <button onClick={() => editTodo(todo.id)} className="p-2 bg-blue-500 text-white rounded">
-                        Edit
-                      </button>
-                      <button onClick={() => deleteTodo(todo.id)} className="p-2 bg-red-500 text-white rounded">
-                        Delete
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Current')} className="p-2 bg-yellow-500 text-white rounded">
-                        Current
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Complete')} className="p-2 bg-green-500 text-white rounded">
-                        Complete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-{/* Current  */}
-          <div>
-            <h2 className="text-lg font-bold mb-2">Current Todos</h2>
-            <div className="space-y-2">
-              {currentTodos.map(todo => (
-                <div key={todo.id} className="flex items-center justify-between p-2 border rounded bg-gray-50">
-                  {editingTodoId === todo.id ? (
-                    <div className="flex space-x-2 flex-1">
-                      <input
-                        type="text"
-                        value={editingTodoText}
-                        onChange={(e) => setEditingTodoText(e.target.value)}
-                        className="flex-1 p-2 border rounded"
-                      />
-                      <button onClick={saveTodo} className="p-2 bg-green-500 text-white rounded">
-                        Save
-                      </button>
-                      <button onClick={() => setEditingTodoId(null)} className="p-2 bg-red-500 text-white rounded">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex space-x-2 flex-1">
-                      <span>{todo.text}</span>
-                      <button onClick={() => editTodo(todo.id)} className="p-2 bg-blue-500 text-white rounded">
-                        Edit
-                      </button>
-                      <button onClick={() => deleteTodo(todo.id)} className="p-2 bg-red-500 text-white rounded">
-                        Delete
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Pending')} className="p-2 bg-yellow-500 text-white rounded">
-                        Pending
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Complete')} className="p-2 bg-green-500 text-white rounded">
-                        Complete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-{/* Complete  */}
-          <div>
-            <h2 className="text-lg font-bold mb-2">Complete Todos</h2>
-            <div className="space-y-2">
-              {completeTodos.map(todo => (
-                <div key={todo.id} className="flex items-center justify-between p-2 border rounded bg-gray-50">
-                  {editingTodoId === todo.id ? (
-                    <div className="flex space-x-2 flex-1">
-                      <input
-                        type="text"
-                        value={editingTodoText}
-                        onChange={(e) => setEditingTodoText(e.target.value)}
-                        className="flex-1 p-2 border rounded"
-                      />
-                      <button onClick={saveTodo} className="p-2 bg-green-500 text-white rounded">
-                        Save
-                      </button>
-                      <button onClick={() => setEditingTodoId(null)} className="p-2 bg-red-500 text-white rounded">
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex space-x-2 flex-1">
-                      <span className="line-through">{todo.text}</span>
-                      <button onClick={() => editTodo(todo.id)} className="p-2 bg-blue-500 text-white rounded">
-                        Edit
-                      </button>
-                      <button onClick={() => deleteTodo(todo.id)} className="p-2 bg-red-500 text-white rounded">
-                        Delete
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Pending')} className="p-2 bg-yellow-500 text-white rounded">
-                        Pending
-                      </button>
-                      <button onClick={() => changeStatus(todo.id, 'Current')} className="p-2 bg-green-500 text-white rounded">
-                        Current
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-        </div>
-
+      {/* Filter Buttons */}
+      <div className="filter-buttons">
+        <button onClick={() => setFilter('all')}>All Todos</button>
+        <button onClick={() => setFilter('pending')}>Pending Todos</button>
+        <button onClick={() => setFilter('completed')}>Completed Todos</button>
       </div>
+
+      {/* Todo List */}
+      <ul className="todo-list">
+        {filteredTodos.map(todo => (
+          <li key={todo.id} className="todo-item">
+            <input 
+              type="checkbox" 
+              checked={todo.completed} 
+              onChange={() => toggleTodo(todo.id)} 
+            />
+            <span className={todo.completed ? 'completed' : ''}>{todo.text}</span>
+            <button onClick={() => updateTodo(todo.id)}>Edit</button>
+            <button onClick={() => deleteTodo(todo.id)}>Delete</button>
+          </li>
+        ))}
+      </ul>
+      
     </div>
-  )
+  );
 }
 
-
-export default AdvanceTodo;
-
+export default App;
 
 
 
 
-css
+
+// Without serach 
+// import { useState, useEffect } from 'react';
+// import './css/AdvanceTodo.css';
+
+// function App() {
+//   const [todos, setTodos] = useState(() => {
+//     // Load todos from localStorage on first render
+//     const savedTodos = localStorage.getItem("todos");
+//     return savedTodos ? JSON.parse(savedTodos) : [];
+//   });
+
+//   const [inputText, setInputText] = useState('');
+//   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed'
+
+//   // Save todos to localStorage whenever they change
+//   useEffect(() => {
+//     localStorage.setItem("todos", JSON.stringify(todos));
+//   }, [todos]);
+
+//   // Add new todo
+//   const addTodo = (e) => {
+//     e.preventDefault();
+//     if (inputText.trim()) {
+//       setTodos([...todos, { id: Date.now(), text: inputText, completed: false }]);
+//       setInputText('');
+//     }
+//   };
+
+//   // Toggle completion status of todo
+//   const toggleTodo = (id) => {
+//     setTodos(todos.map(todo =>
+//       todo.id === id ? { ...todo, completed: !todo.completed } : todo
+//     ));
+//   };
+
+//   // Delete todo
+//   const deleteTodo = (id) => {
+//     setTodos(todos.filter(todo => todo.id !== id));
+//   };
+
+//   // Update todo text
+//   const updateTodo = (id) => {
+//     const newText = prompt('Edit todo:', todos.find(todo => todo.id === id).text);
+//     if (newText !== null && newText.trim() !== '') {
+//       setTodos(todos.map(todo =>
+//         todo.id === id ? { ...todo, text: newText } : todo
+//       ));
+//     }
+//   };
+
+//   // Filter todos based on status
+//   const filteredTodos = todos.filter(todo => {
+//     if (filter === 'pending') return !todo.completed;
+//     if (filter === 'completed') return todo.completed;
+//     return true; // for 'all'
+//   });
+
+//   return (
+//     <div className="app">
+//       <h1>Todo App</h1>
+
+//       {/* Todo Input Section */}
+//       <form onSubmit={addTodo} className="todo-form">
+//         <input
+//           type="text"
+//           value={inputText}
+//           onChange={(e) => setInputText(e.target.value)}
+//           placeholder="Add a new todo..."
+//         />
+//         <button type="submit">Add Todo</button>
+//       </form>
+
+//       {/* Filter Buttons */}
+//       <div className="filter-buttons">
+//         <button onClick={() => setFilter('all')}>All Todos</button>
+//         <button onClick={() => setFilter('pending')}>Pending Todos</button>
+//         <button onClick={() => setFilter('completed')}>Completed Todos</button>
+//       </div>
+
+//       {/* Todo List */}
+//       <ul className="todo-list">
+//         {filteredTodos.map(todo => (
+//           <li key={todo.id} className="todo-item">
+//             <input 
+//               type="checkbox" 
+//               checked={todo.completed} 
+//               onChange={() => toggleTodo(todo.id)} 
+//             />
+//             <span className={todo.completed ? 'completed' : ''}>{todo.text}</span>
+//             <button onClick={() => updateTodo(todo.id)}>Edit</button>
+//             <button onClick={() => deleteTodo(todo.id)}>Delete</button>
+//           </li>
+//         ))}
+//       </ul>
+      
+//     </div>
+//   );
+// }
+
+// export default App;
 
 
-/* AdvanceTodo.css */
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f4f6f9;
-  color: #333;
-  margin: 0;
-  padding: 0;
-}
 
-.app {
-  width: 400px;
-  margin: 50px auto;
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-h1 {
-  text-align: center;
-  font-size: 2rem;
-}
-
-.todo-form {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.todo-form input {
-  width: 70%;
-  padding: 10px;
-  font-size: 1rem;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
-
-.todo-form button {
-  width: 25%;
-  padding: 10px;
-  font-size: 1rem;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.todo-form button:hover {
-  background-color: #45a049;
-}
-
-.filter-buttons {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 20px;
-}
-
-.filter-buttons button {
-  padding: 8px 16px;
-  background-color: #2196f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.filter-buttons button:hover {
-  background-color: #1976d2;
-}
-
-.todo-list {
-  list-style-type: none;
-  padding-left: 0;
-}
-
-.todo-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-
-.todo-item span {
-  cursor: pointer;
-  flex-grow: 1;
-}
-
-.todo-item button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  background-color: #ff6347;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.todo-item button:hover {
-  background-color: #e55347;
-}
-
-.todo-item .completed {
-  text-decoration: line-through;
-  color: gray;
-}
-
-input[type="text"] {
-  width: 80%;
-  padding: 8px;
-  font-size: 1rem;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-}
-
-button {
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #45a049;
-}
